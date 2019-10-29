@@ -106,9 +106,6 @@ public class Main {
         if (link.startsWith("//")) {
             link = "https:" + link;
         }
-
-        System.out.println(link);
-
         HttpGet httpGet = new HttpGet(link);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36");
         try (CloseableHttpResponse response = httpclient.execute(httpGet)) {
@@ -123,9 +120,11 @@ public class Main {
         return (!isBadData(link) && isNewsPage(link) && !isLoginPage(link))
                 || isIndexPage(link);
     }
-
     private static boolean isBadData(String link) {
         return link.contains("\\");
+
+  
+
     }
 
     private static boolean isLoginPage(String link) {
