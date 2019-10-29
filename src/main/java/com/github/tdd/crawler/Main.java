@@ -18,41 +18,28 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
 
 public class Main {
     @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
     public static void main(String[] args) throws IOException, SQLException {
         Connection connection = DriverManager.getConnection("jdbc:h2:file:d:/software/IDEA/crawler/news", "root", "root");
-        while (true) {
+        String link;
+        while ((link = getNextLink(connection, "select link from LINKS_TO_BE_PROCESSED limit 1")) != null) {
+            System.out.println(link);
             //Links to be processed
-            Deque<String> linkPool = new LinkedList<>(loadUrlsFromDatabase(connection, "select link from LINKS_TO_BE_PROCESSED"));
-            if (linkPool.isEmpty()) {
-                break;
-            }
-            String link = linkPool.removeFirst();
-            deleteLinkFromDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
+            updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
             if (!isLinkProcessed(connection, link)) {
                 if (isInterestingLink(link)) {
                     Document doc = getHtmlAndParse(link);
                     getUrlsFromDocumentAndStore(connection, doc);
                     storeNewsIntoDatabase(doc);
-                    insertLinksIntoDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
+                    updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
                 }
             }
         }
     }
 
-    private static void deleteLinkFromDatabase(Connection connection, String link, String sql) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, link);
-            statement.executeUpdate();
-        }
-    }
-
-    private static void insertLinksIntoDatabase(Connection connection, String link, String sql) throws SQLException {
+    private static void updateDatabase(Connection connection, String link, String sql) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, link);
             statement.executeUpdate();
@@ -62,7 +49,7 @@ public class Main {
     private static void getUrlsFromDocumentAndStore(Connection connection, Document doc) throws SQLException {
         for (Element aTag : doc.select("a")) {
             String href = aTag.attr("href");
-            insertLinksIntoDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+            updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
         }
     }
 
@@ -82,15 +69,14 @@ public class Main {
         return false;
     }
 
-    private static List<String> loadUrlsFromDatabase(Connection connection, String sql) throws SQLException {
-        List<String> results = new ArrayList<>();
+    private static String getNextLink(Connection connection, String sql) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
-                results.add(resultSet.getString(1));
+                return resultSet.getString(1);
             }
         }
-        return results;
+        return null;
     }
 
     private static void storeNewsIntoDatabase(Document doc) {
@@ -107,7 +93,6 @@ public class Main {
             link = "https:" + link;
         }
 
-        System.out.println(link);
 
         HttpGet httpGet = new HttpGet(link);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36");
