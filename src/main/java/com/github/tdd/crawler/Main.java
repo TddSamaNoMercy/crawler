@@ -1,5 +1,6 @@
 package com.github.tdd.crawler;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -11,30 +12,71 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-        //Links to be processed
-        Deque<String> linkPool = new LinkedList<>();
-        linkPool.add("https://sina.cn");
-        //processed links
-        Set<String> processedLinks = new HashSet<>();
-        while (!linkPool.isEmpty()) {
-            String link = linkPool.removeFirst();
-            if (!processedLinks.contains(link)) {
+    @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
+    public static void main(String[] args) throws IOException, SQLException {
+        Connection connection = DriverManager.getConnection("jdbc:h2:file:d:/software/IDEA/crawler/news", "root", "root");
+        String link;
+        while ((link = getNextLink(connection, "select link from LINKS_TO_BE_PROCESSED limit 1")) != null) {
+            System.out.println(link);
+            //Links to be processed
+            updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
+            if (!isLinkProcessed(connection, link)) {
                 if (isInterestingLink(link)) {
                     Document doc = getHtmlAndParse(link);
-                    doc.select("a").stream().map(aTag -> aTag.attr("herf")).forEach(linkPool::add);
+                    getUrlsFromDocumentAndStore(connection, doc);
                     storeNewsIntoDatabase(doc);
-                    processedLinks.add(link);
+                    updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
                 }
             }
         }
+    }
+
+    private static void updateDatabase(Connection connection, String link, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, link);
+            statement.executeUpdate();
+        }
+    }
+
+    private static void getUrlsFromDocumentAndStore(Connection connection, Document doc) throws SQLException {
+        for (Element aTag : doc.select("a")) {
+            String href = aTag.attr("href");
+            updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+        }
+    }
+
+    private static boolean isLinkProcessed(Connection connection, String link) throws SQLException {
+        ResultSet resultSet = null;
+        try (PreparedStatement statement = connection.prepareStatement("select link from LINKS_ALREADY_PROCESSED where link = ?")) {
+            statement.setString(1, link);
+            resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                return true;
+            }
+        } finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+        }
+        return false;
+    }
+
+    private static String getNextLink(Connection connection, String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                return resultSet.getString(1);
+            }
+        }
+        return null;
     }
 
     private static void storeNewsIntoDatabase(Document doc) {
@@ -48,7 +90,6 @@ public class Main {
     private static Document getHtmlAndParse(String link) throws IOException {
         CloseableHttpClient httpclient = HttpClients.createDefault();
         if (link.startsWith("//")) {
-            System.out.println(link);
             link = "https:" + link;
         }
         HttpGet httpGet = new HttpGet(link);
@@ -62,8 +103,14 @@ public class Main {
     }
 
     private static boolean isInterestingLink(String link) {
-        return isNewsPage(link) || isIndexPage(link)
-                && !isLoginPage(link);
+        return (!isBadData(link) && isNewsPage(link) && !isLoginPage(link))
+                || isIndexPage(link);
+    }
+
+    private static boolean isBadData(String link) {
+        return link.contains("\\");
+
+
     }
 
     private static boolean isLoginPage(String link) {
