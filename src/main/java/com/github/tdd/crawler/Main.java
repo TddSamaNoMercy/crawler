@@ -48,7 +48,14 @@ public class Main {
     private static void getUrlsFromDocumentAndStore(Connection connection, Document doc) throws SQLException {
         for (Element aTag : doc.select("a")) {
             String href = aTag.attr("href");
-            updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED (link) values (?)");
+            if (href.startsWith("//")) {
+                href = "https:" + href;
+            }
+            if (isInterestingLink(href)){
+                System.out.println("to processed: "+href);
+                updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED(LINK)\n" +
+                        "values (?)");
+            }
         }
     }
 
@@ -88,9 +95,7 @@ public class Main {
 
     private static Document getHtmlAndParse(String link) throws IOException {
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        if (link.startsWith("//")) {
-            link = "https:" + link;
-        }
+
         HttpGet httpGet = new HttpGet(link);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.120 Safari/537.36");
         try (CloseableHttpResponse response = httpclient.execute(httpGet)) {
