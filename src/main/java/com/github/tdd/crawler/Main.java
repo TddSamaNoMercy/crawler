@@ -106,10 +106,10 @@ public class Main {
         return (!isBadData(link) && isNewsPage(link) && !isLoginPage(link))
                 || isIndexPage(link);
     }
+
     private static boolean isBadData(String link) {
         return link.contains("\\");
 
-  
 
     }
 
