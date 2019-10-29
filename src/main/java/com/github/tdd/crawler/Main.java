@@ -104,8 +104,6 @@ public class Main {
     private static boolean isInterestingLink(String link) {
         return (!isBadData(link) && isNewsPage(link) && !isLoginPage(link))
                 || isIndexPage(link);
-//        if ("https://sina.cn".equals(link)) return true;
-//        return !isBadData(link) && isNewsPage(link) && !isLoginPage(link);
     }
 
     private static boolean isBadData(String link) {
