@@ -26,7 +26,6 @@ public class Main {
         String link;
         while ((link = getNextLink(connection, "select link from LINKS_TO_BE_PROCESSED limit 1")) != null) {
             System.out.println(link);
-            //Links to be processed
             updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
             if (!isLinkProcessed(connection, link)) {
                 if (isInterestingLink(link)) {
