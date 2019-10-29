@@ -12,6 +12,16 @@ public class JdbcCrawlerDao implements CrawlerDao {
 
     Connection connection;
 
+    @Override
+    public String getNextLinkFromLinksToBeProcessed() throws SQLException {
+        return getNextLink("SELECT LINK FROM LINKS_TO_BE_PROCESSED LIMIT 1");
+    }
+
+    @Override
+    public void deleteLinkFromLinksToBeProcessed(String link) throws SQLException {
+        updateDatabase(link, "DELETE FROM LINKS_TO_BE_PROCESSED WHERE LINK = ?");
+    }
+
     @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
     public JdbcCrawlerDao() {
         try {
@@ -21,7 +31,6 @@ public class JdbcCrawlerDao implements CrawlerDao {
         }
     }
 
-    @Override
     public void updateDatabase(String link, String sql) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, link);
@@ -30,6 +39,16 @@ public class JdbcCrawlerDao implements CrawlerDao {
     }
 
     @Override
+    public void insertLinkIntoLinksToBeProcessed(String href) throws SQLException {
+        updateDatabase(href, "insert into LINKS_TO_BE_PROCESSED(LINK)\n" +
+                "values (?)");
+    }
+
+    @Override
+    public void insertLinkIntoLinksAlreadyProcessed(String link) throws SQLException {
+        updateDatabase(link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
+    }
+
     public String getNextLink(String sql) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -41,9 +60,9 @@ public class JdbcCrawlerDao implements CrawlerDao {
     }
 
     @Override
-    public void insertNewToDatabase(String link, String title, String content) throws SQLException {
+    public void insertNewsToDatabase(String link, String title, String content) throws SQLException {
         try (PreparedStatement statement =
-                     connection.prepareStatement("insert into news (url,title,content,created_at,modified_at) values (?,?,?,now(),now())")) {
+                     connection.prepareStatement("INSERT INTO NEWS (URL,TITLE,CONTENT,CREATED_AT,MODIFIED_AT) VALUES (?,?,?,NOW(),NOW())")) {
             statement.setString(1, link);
             statement.setString(2, title);
             statement.setString(3, content);
