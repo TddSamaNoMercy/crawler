@@ -26,7 +26,6 @@ public class Main {
         String link;
         while ((link = getNextLink(connection, "select link from LINKS_TO_BE_PROCESSED limit 1")) != null) {
             System.out.println(link);
-            //Links to be processed
             updateDatabase(connection, link, "delete from LINKS_TO_BE_PROCESSED where link = ?");
             if (!isLinkProcessed(connection, link)) {
                 if (isInterestingLink(link)) {
@@ -105,6 +104,8 @@ public class Main {
     private static boolean isInterestingLink(String link) {
         return (!isBadData(link) && isNewsPage(link) && !isLoginPage(link))
                 || isIndexPage(link);
+//        if ("https://sina.cn".equals(link)) return true;
+//        return !isBadData(link) && isNewsPage(link) && !isLoginPage(link);
     }
 
     private static boolean isBadData(String link) {
