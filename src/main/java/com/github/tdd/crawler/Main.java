@@ -18,6 +18,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 public class Main {
     @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
@@ -31,7 +32,7 @@ public class Main {
                 if (isInterestingLink(link)) {
                     Document doc = getHtmlAndParse(link);
                     getUrlsFromDocumentAndStore(connection, doc);
-                    storeNewsIntoDatabase(doc);
+                    storeNewsIntoDatabase(connection, doc, link);
                     updateDatabase(connection, link, "insert into LINKS_ALREADY_PROCESSED (link) values (?)");
                 }
             }
@@ -51,8 +52,8 @@ public class Main {
             if (href.startsWith("//")) {
                 href = "https:" + href;
             }
-            if (isInterestingLink(href)){
-                System.out.println("to processed: "+href);
+            if (isInterestingLink(href)) {
+                System.out.println("to processed: " + href);
                 updateDatabase(connection, href, "insert into LINKS_TO_BE_PROCESSED(LINK)\n" +
                         "values (?)");
             }
@@ -85,11 +86,21 @@ public class Main {
         return null;
     }
 
-    private static void storeNewsIntoDatabase(Document doc) {
-        ArrayList<Element> titles = doc.select("article");
-        if (!titles.isEmpty()) {
-            String title = titles.get(0).child(0).text();
-            System.out.println(title);
+    private static void storeNewsIntoDatabase(Connection connection, Document doc, String link) throws SQLException {
+        ArrayList<Element> articleTags = doc.select("article");
+        if (!articleTags.isEmpty()) {
+            for (Element articleTag : articleTags) {
+                String title = articleTags.get(0).child(0).text();
+                String content = articleTag.select("p").stream()
+                        .map(Element::text).collect(Collectors.joining("\n"));
+                try (PreparedStatement statement =
+                             connection.prepareStatement("insert into news (url,title,content,created_at,modified_at) values (?,?,?,now(),now())")) {
+                    statement.setString(1, link);
+                    statement.setString(2, title);
+                    statement.setString(3, content);
+                    statement.executeUpdate();
+                }
+            }
         }
     }
 
