@@ -16,27 +16,31 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-public class Crawler {
-    private CrawlerDao dao = new MybatisCrawlerDao();
+public class Crawler extends Thread {
+    private CrawlerDao dao;
 
-    public void run() throws SQLException, IOException {
-        String link;
-        while ((link = dao.getNextLinkFromLinksToBeProcessed()) != null) {
-            dao.deleteLinkFromLinksToBeProcessed(link);
-            if (!dao.isLinkProcessed(link)) {
-                if (isInterestingLink(link)) {
-                    Document doc = getHtmlAndParse(link);
-                    getUrlsFromDocumentAndStore(doc);
-                    storeNewsIntoDatabase(doc, link);
-                    dao.insertLinkIntoLinksAlreadyProcessed(link);
-                }
-            }
-        }
+    public Crawler(CrawlerDao dao) {
+        this.dao = dao;
     }
 
-    @SuppressFBWarnings("DMI_CONSTANT_DB_PASSWORD")
-    public static void main(String[] args) throws IOException, SQLException {
-        new Crawler().run();
+    @Override
+    public void run(){
+        String link;
+        try {
+            while ((link = dao.getNextLinkFromLinksToBeProcessed()) != null) {
+                dao.deleteLinkFromLinksToBeProcessed(link);
+                if (!dao.isLinkProcessed(link)) {
+                    if (isInterestingLink(link)) {
+                        Document doc = getHtmlAndParse(link);
+                        getUrlsFromDocumentAndStore(doc);
+                        storeNewsIntoDatabase(doc, link);
+                        dao.insertLinkIntoLinksAlreadyProcessed(link);
+                    }
+                }
+            }
+        } catch (Exception e){
+            throw new RuntimeException(e);
+        }
     }
 
     private void getUrlsFromDocumentAndStore(Document doc) throws SQLException {
