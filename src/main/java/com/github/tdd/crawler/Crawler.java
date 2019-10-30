@@ -1,6 +1,5 @@
 package com.github.tdd.crawler;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -24,7 +23,7 @@ public class Crawler extends Thread {
     }
 
     @Override
-    public void run(){
+    public void run() {
         String link;
         try {
             while ((link = dao.getNextLinkFromLinksToBeProcessed()) != null) {
@@ -38,7 +37,7 @@ public class Crawler extends Thread {
                     }
                 }
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
