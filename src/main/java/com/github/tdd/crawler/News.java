@@ -1,10 +1,42 @@
 package com.github.tdd.crawler;
 
+import java.time.Instant;
+
 public class News {
     int id;
     String url;
     String title;
     String content;
+    Instant createdAt;
+    Instant modifiedAt;
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public News() {
+    }
+
+    public News(News originNews) {
+        this.url = originNews.url;
+        this.title = originNews.title;
+        this.content = originNews.content;
+        this.createdAt = originNews.createdAt;
+        this.modifiedAt = originNews.modifiedAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public void setModifiedAt(Instant modifiedAt) {
+        this.modifiedAt = modifiedAt;
+    }
+
 
     public News(String url, String title, String content) {
         this.url = url;
